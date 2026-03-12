@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Flappy Puj</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap');
@@ -15,56 +15,77 @@
             display: flex; 
             justify-content: center; 
             align-items: center; 
-            height: 100vh; 
+            height: 100vh;
+            touch-action: manipulation; /* Prevents zooming on fast taps */
         }
+
         #game-container {
             position: relative;
             box-shadow: 0 50px 100px rgba(0,0,0,0.9);
-            border-radius: 30px;
+            border-radius: 20px;
             overflow: hidden;
-            border: 12px solid #ffffff10;
-            width: 1200px;
-            height: 800px;
+            border: 8px solid #ffffff10;
+            /* Mobile scaling logic */
+            width: 100vw;
+            max-width: 1200px;
+            aspect-ratio: 1200 / 800;
         }
+
         #bg-layer {
             position: absolute;
-            top: 0; left: 0; width: 2400px; height: 800px;
+            top: 0; left: 0; width: 200%; height: 100%;
             background-image: url('Pics/background.jpg');
             background-repeat: repeat-x;
-            background-size: 1200px 800px;
+            background-size: 50% 100%;
             filter: blur(12px) saturate(0.6) contrast(0.8) brightness(0.9);
             z-index: 0;
         }
-        canvas { position: absolute; top: 0; left: 0; display: block; z-index: 1; }
+
+        canvas { 
+            position: absolute; 
+            top: 0; left: 0; 
+            display: block; 
+            z-index: 1; 
+            width: 100%; /* Scales canvas to container */
+            height: 100%;
+        }
+
         #white-out {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             background: white; opacity: 0; z-index: 5;
             pointer-events: none; transition: opacity 0.8s ease-in-out;
         }
+
         #ui { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             display: flex; justify-content: center; align-items: center; 
             z-index: 10; pointer-events: none;
         }
+
         .menu-box { 
             background: rgba(255, 255, 255, 0.98); 
-            padding: 50px; border-radius: 50px; pointer-events: auto; 
+            padding: 30px; border-radius: 30px; pointer-events: auto; 
             text-align: center; border: 2px solid #fce7f3; color: #1e293b;
             box-shadow: 0 20px 50px rgba(0,0,0,0.4);
-            min-width: 500px;
+            width: 80%;
+            max-width: 500px;
         }
-        .btn-container { display: flex; flex-direction: column; gap: 15px; align-items: center; margin-top: 20px; }
+
+        .btn-container { display: flex; flex-direction: column; gap: 12px; align-items: center; margin-top: 15px; }
+
         button { 
-            padding: 18px 40px; font-size: 22px; cursor: pointer; background: #ec4899; 
+            padding: 15px 25px; font-size: 18px; cursor: pointer; background: #ec4899; 
             color: white; border: none; border-radius: 100px; font-weight: 700; 
-            box-shadow: 0 6px 0 #be185d; transition: 0.1s; font-family: 'Quicksand', sans-serif;
-            width: 90%;
+            box-shadow: 0 5px 0 #be185d; transition: 0.1s; font-family: 'Quicksand', sans-serif;
+            width: 100%;
         }
-        button.alt { background: #6366f1; box-shadow: 0 6px 0 #4338ca; }
-        button:active { transform: translateY(4px); box-shadow: 0 2px 0 #be185d; }
-        h1 { margin: 0; font-size: 55px; color: #db2777; }
-        p { color: #64748b; font-size: 20px; margin: 10px 0; line-height: 1.4; }
+
+        button.alt { background: #6366f1; box-shadow: 0 5px 0 #4338ca; }
+        button:active { transform: translateY(3px); box-shadow: 0 2px 0 #be185d; }
+
+        h1 { margin: 0; font-size: clamp(30px, 8vw, 55px); color: #db2777; }
+        p { color: #64748b; font-size: clamp(14px, 4vw, 20px); margin: 10px 0; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -75,9 +96,9 @@
         <div id="ui">
             <div class="menu-box" id="menu-content">
                 <h1 id="ui-title">Flappy Puj</h1>
-                <p id="ui-desc">Reach the end, Byeaatchh</p>
+                <p id="ui-desc">Rescue your love from the castle cage!</p>
                 <div class="btn-container" id="ui-btns">
-                    <button onclick="startGame()">Shuru Maadana</button>
+                    <button onclick="startGame()">Start Adventure</button>
                 </div>
             </div>
         </div>
@@ -94,6 +115,7 @@ const uiTitle = document.getElementById('ui-title');
 const uiDesc = document.getElementById('ui-desc');
 const uiBtns = document.getElementById('ui-btns');
 
+// Logical resolution stays 1200x800 for the physics engine
 canvas.width = 1200;
 canvas.height = 800;
 
@@ -137,8 +159,6 @@ function startGame() {
 }
 
 function closeGame() {
-    window.close();
-    // Fallback if window.close is blocked by browser
     uiTitle.innerText = "❤️";
     uiDesc.innerText = "Go give him a call! :)";
     uiBtns.innerHTML = "";
@@ -159,15 +179,17 @@ function handleCollision() {
     }
 }
 
-window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space') {
-        e.preventDefault(); 
-        if (gameRunning && state === 'playing') {
-            bird.velocity = -4.8;
-            wobble = 15;
-        }
+// TOUCH & KEYBOARD LOGIC
+function triggerJump(e) {
+    if (e) e.preventDefault();
+    if (gameRunning && state === 'playing') {
+        bird.velocity = -4.8;
+        wobble = 15;
     }
-});
+}
+
+window.addEventListener('keydown', (e) => { if (e.code === 'Space') triggerJump(e); });
+canvas.addEventListener('touchstart', (e) => triggerJump(e), { passive: false });
 
 function drawCastle(x, y) {
     ctx.fillStyle = "#475569";
@@ -182,7 +204,6 @@ function drawCastle(x, y) {
 function update() {
     if (!gameRunning && state === 'playing') return;
 
-    // Background stops during whiteout/ending
     if (state === 'playing') {
         bgX -= (gameSpeed * 0.7);
         if (bgX <= -1200) bgX = 0;
@@ -206,7 +227,6 @@ function update() {
 
         if (bird.y + bird.h > canvas.height || bird.y < 0) handleCollision();
 
-        // Stop spawning pipes once 15 are on screen or scored
         if (score + pipes.length < 15 && frame % 280 === 0) {
             pipes.push({ x: canvas.width, top: Math.random() * 300 + 100, gap: 270, passed: false });
         }
@@ -232,15 +252,11 @@ function update() {
 
         pipes = pipes.filter(p => p.x > -120);
         
-        // Exact 15th pillar trigger
         if (score >= 15 && pipes.length === 0) {
             state = 'whiteout';
             whiteOut.style.opacity = "1";
             items = [];
-            setTimeout(() => { 
-                state = 'ending'; 
-                whiteOut.style.opacity = "0"; 
-            }, 1000);
+            setTimeout(() => { state = 'ending'; whiteOut.style.opacity = "0"; }, 1000);
         }
 
     } else if (state === 'ending') {
@@ -272,7 +288,6 @@ function update() {
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
     if (state === 'ending') drawCastle(partner.x - 100, partner.castleY);
 
     items.forEach(it => ctx.drawImage(images[it.type], it.x, it.y, it.w, it.h));
@@ -286,9 +301,6 @@ function draw() {
         if (partner.isCaged) {
             ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 4;
             ctx.strokeRect(partner.x - 5, partner.y - 5, partner.w + 10, partner.h + 10);
-            for(let i=0; i<partner.w; i+=20) {
-                ctx.beginPath(); ctx.moveTo(partner.x+i, partner.y-5); ctx.lineTo(partner.x+i, partner.y+partner.h+5); ctx.stroke();
-            }
         }
         ctx.drawImage(images.partner, partner.x, partner.y, partner.w, partner.h);
         if (!partner.isCaged) {
@@ -305,6 +317,7 @@ function draw() {
     }
     ctx.restore();
 
+    // HUD Scaling for Mobile
     ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
     ctx.beginPath();
     ctx.roundRect(40, 40, 240, 100, 20);
